@@ -22,7 +22,7 @@ Only output **hits** to gz file (program writes gzip itself):
 ```bash
 tsoclip \
   --fastq input.fastq.gz \
-  --tso CCCCTCTGCGTTGATACCACTGCTT \
+  --tso NNNNNNNNNNNNNNNNNNNNNN \
   --out-tsv run.hits.tsv \
   --out-trim-fastq run.trimmed.fastq.gz \
   --emit-only-hit 1 --min-keep-len 50
@@ -34,7 +34,7 @@ Or **pipe** with `pigz` (program outputs **plain FASTQ**):
 pigz -dc input.fastq.gz | \
 tsoclip \
   --fastq - \
-  --tso CCCCTCTGCGTTGATACCACTGCTT \
+  --tso NNNNNNNNNNNNNNNNNNNNNN \
   --out-tsv run.hits.tsv \
   --out-trim-fastq - \
   --plain-out \
