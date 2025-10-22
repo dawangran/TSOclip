@@ -127,6 +127,24 @@ static void dedup_prune(TSOHits *hv, int min_spacing, int max_keep){
     hv->n = w; if (max_keep>0 && hv->n > max_keep) hv->n = max_keep;
 }
 
+/*** NEW: choose earliest cut-start to remove ALL concatenated TSOs in window ***/
+static inline int earliest_cut_start(const TSOHits *hv){
+    // hv->n > 0 guaranteed by caller
+    int cut_start = hv->a[0].start;
+    int have_full = 0;
+    for (int k = 0; k < hv->n; ++k){
+        const TSOHit *h = &hv->a[k];
+        if (h->partial == 0){ // FULL takes priority
+            if (!have_full || h->start < cut_start) cut_start = h->start;
+            have_full = 1;
+        } else if (!have_full && h->start < cut_start){
+            // Only consider PARTIAL for earliest cut when no FULL exists
+            cut_start = h->start;
+        }
+    }
+    return cut_start;
+}
+
 static void tso_scan(const char *seq, int L, const char *tso, int tL, const TSOParams *P, TSOHits *hv){
     th_init(hv); partial_prefix_hits(seq,L,tso,tL,P,hv); full_hits(seq,L,tso,tL,P,hv); dedup_prune(hv,P->min_spacing,P->tso_max_hits);
 }
@@ -147,7 +165,7 @@ typedef struct {
 
 static void usage(){
     fprintf(stderr,
-"TSOclip v0.1.0\n"
+"TSOclip v0.1.0-mod\n"
 "Usage:\n"
 "  tsoclip --fastq in.fastq[.gz|-/stdin] --tso SEQ --out-tsv hits.tsv --out-trim-fastq out.fastq[.gz|-/stdout]\n"
 "Scan:\n"
@@ -160,7 +178,7 @@ static void usage(){
 "  --min-spacing INT      [6]\n"
 "Behavior:\n"
 "  --n-as-match                 # read 'N' as wildcard\n"
-"  --concat-prefer-full         # prefer nearest FULL when concatenated & tail-most is partial\n"
+"  --concat-prefer-full         # prefer nearest FULL when concatenated & tail-most is partial (reporting only)\n"
 "  --emit-only-hit 0|1          # write only reads with accepted hit [0]\n"
 "  --min-keep-len INT           # drop reads shorter than this after trimming [1]\n"
 "Output speed:\n"
@@ -306,7 +324,12 @@ int main(int argc, char **argv){
                 if (opt.concat_prefer_full && hv.n>=2 && chosen.partial){
                     for (int k=0;k<hv.n;k++){ if (hv.a[k].partial==0){ chosen = hv.a[k]; break; } }
                 }
-                S[i].use_hit=1; S[i].pick=chosen; S[i].out_len = chosen.start;
+                S[i].use_hit=1; S[i].pick=chosen;
+
+                /* MODIFIED: cut to the earliest start among hits in window
+                   (prefer FULL; fallback to earliest PARTIAL if no FULL)
+                   -> remove ALL concatenated TSOs at once */
+                S[i].out_len = earliest_cut_start(&hv);
 
                 if (!opt.no_json){
                     int est = hv.n*40 + 16; S[i].all_json = (char*)malloc(est);
