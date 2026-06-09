@@ -1,0 +1,11 @@
+.DS_Store
+tsoclip
+*.o
+*.dSYM/
+*.fastq
+*.fq
+*.fastq.gz
+*.fq.gz
+*.tsv
+*.tmp
+*.log

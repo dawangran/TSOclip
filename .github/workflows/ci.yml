@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    name: ${{ matrix.os }} / ${{ matrix.openmp }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            openmp: auto
+          - os: ubuntu-latest
+            openmp: 0
+          - os: macos-latest
+            openmp: auto
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zlib1g-dev
+
+      - name: Build
+        run: make clean && make OPENMP=${{ matrix.openmp }}
+
+      - name: Test
+        run: make check OPENMP=${{ matrix.openmp }}
+
+      - name: Version
+        run: ./tsoclip --version
